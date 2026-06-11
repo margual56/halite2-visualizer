@@ -34,6 +34,13 @@ export interface TurnRecord {
 	planets: PlanetRecord[]; // same count as planets header, keyed by id
 }
 
+export interface RankRecord {
+	playerId: number;
+	shipCount: number;
+	resources: number;
+	rank: number; // 1 = winner
+}
+
 export interface Replay {
 	width: number;
 	height: number;
@@ -42,6 +49,8 @@ export interface Replay {
 	turns: TurnRecord[];
 	/** maps owner_id → player slot index (for coloring) */
 	playerIndex: Map<number, number>;
+	/** final rankings, sorted rank 1 first — undefined if footer absent */
+	rankings: RankRecord[] | undefined;
 }
 
 function r8(view: DataView, off: number, ctx: string): number {
@@ -75,20 +84,25 @@ export function parseReplay(buffer: ArrayBuffer): Replay {
 
 	const _version = r8(view, off++, 'version');
 
-	const width = r32(view, off, 'width'); off += 4;
-	const height = r32(view, off, 'height'); off += 4;
+	const width = r32(view, off, 'width');
+	off += 4;
+	const height = r32(view, off, 'height');
+	off += 4;
 
 	const nPlayers = r8(view, off++, 'nPlayers');
 	console.log(`[parser] ${view.byteLength}b file, ${nPlayers} players`);
 	const players: PlayerHeader[] = [];
 	for (let i = 0; i < nPlayers; i++) {
-		const id = r32(view, off, `player[${i}].id`); off += 4;
-		const nameBytes = new Uint8Array(buffer, off, 16); off += 16;
+		const id = r32(view, off, `player[${i}].id`);
+		off += 4;
+		const nameBytes = new Uint8Array(buffer, off, 16);
+		off += 16;
 		const name = new TextDecoder().decode(nameBytes).replace(/\0/g, '').trim();
 		players.push({ id, name });
 	}
 
-	const nPlanets = r32(view, off, 'nPlanets'); off += 4;
+	const nPlanets = r32(view, off, 'nPlanets');
+	off += 4;
 	{
 		const hex = (start: number, len: number) =>
 			Array.from(new Uint8Array(buffer, start, Math.min(len, buffer.byteLength - start)))
@@ -106,11 +120,16 @@ export function parseReplay(buffer: ArrayBuffer): Replay {
 		);
 	const planets: PlanetHeader[] = [];
 	for (let i = 0; i < nPlanets; i++) {
-		const id = r32(view, off, `planet[${i}].id`); off += 4;
-		const x = r64(view, off, `planet[${i}].x`); off += 8;
-		const y = r64(view, off, `planet[${i}].y`); off += 8;
-		const size = r64(view, off, `planet[${i}].size`); off += 8;
-		const initialHalite = r64(view, off, `planet[${i}].halite`); off += 8;
+		const id = r32(view, off, `planet[${i}].id`);
+		off += 4;
+		const x = r64(view, off, `planet[${i}].x`);
+		off += 8;
+		const y = r64(view, off, `planet[${i}].y`);
+		off += 8;
+		const size = r64(view, off, `planet[${i}].size`);
+		off += 8;
+		const initialHalite = r64(view, off, `planet[${i}].halite`);
+		off += 8;
 		const dockingSpots = r8(view, off++, `planet[${i}].dockingSpots`);
 		planets.push({ id, x, y, size, initialHalite, dockingSpots });
 	}
@@ -123,27 +142,45 @@ export function parseReplay(buffer: ArrayBuffer): Replay {
 			console.warn(`[parser] ${remaining} trailing bytes at off=${off}, stopping`);
 			break;
 		}
-		const turn = r32(view, off, 'turn'); off += 4;
-		const nShips = r32(view, off, 'nShips'); off += 4;
 
-		if (nShips > 100_000) throw new Error(`[off=${off}] implausible nShips=${nShips} at turn ${turn}`);
+		// Peek at the next u32 — 0xFFFFFFFF is the footer sentinel
+		const peek = r32(view, off, 'turn-or-sentinel');
+		if (peek === 0xffffffff) {
+			off += 4; // consume sentinel
+			break;
+		}
+
+		const turn = peek;
+		off += 4;
+		const nShips = r32(view, off, 'nShips');
+		off += 4;
+
+		if (nShips > 100_000)
+			throw new Error(`[off=${off}] implausible nShips=${nShips} at turn ${turn}`);
 
 		const ships: ShipRecord[] = [];
 		for (let i = 0; i < nShips; i++) {
-			const id = r32(view, off, `ship[${i}].id`); off += 4;
-			const ownerId = r32(view, off, `ship[${i}].ownerId`); off += 4;
-			const x = r64(view, off, `ship[${i}].x`); off += 8;
-			const y = r64(view, off, `ship[${i}].y`); off += 8;
+			const id = r32(view, off, `ship[${i}].id`);
+			off += 4;
+			const ownerId = r32(view, off, `ship[${i}].ownerId`);
+			off += 4;
+			const x = r64(view, off, `ship[${i}].x`);
+			off += 8;
+			const y = r64(view, off, `ship[${i}].y`);
+			off += 8;
 			const health = r8(view, off++, `ship[${i}].health`);
 			const state = r8(view, off++, `ship[${i}].state`);
-			const planetId = r32(view, off, `ship[${i}].planetId`); off += 4;
+			const planetId = r32(view, off, `ship[${i}].planetId`);
+			off += 4;
 			ships.push({ id, ownerId, x, y, health, state, planetId });
 		}
 
 		const planetRecords: PlanetRecord[] = [];
 		for (let i = 0; i < nPlanets; i++) {
-			const id = r32(view, off, `turnPlanet[${i}].id`); off += 4;
-			const halite = r64(view, off, `turnPlanet[${i}].halite`); off += 8;
+			const id = r32(view, off, `turnPlanet[${i}].id`);
+			off += 4;
+			const halite = r64(view, off, `turnPlanet[${i}].halite`);
+			off += 8;
 			const dockedCount = r8(view, off++, `turnPlanet[${i}].dockedCount`);
 			planetRecords.push({ id, halite, dockedCount });
 		}
@@ -152,6 +189,32 @@ export function parseReplay(buffer: ArrayBuffer): Replay {
 	}
 
 	console.log(`[parser] done: ${turns.length} turns parsed`);
+
+	// --- Read footer rankings if present ---
+	let rankings: RankRecord[] | undefined;
+	if (off < view.byteLength) {
+		try {
+			const nRanked = r8(view, off++, 'rankings.nPlayers');
+			rankings = [];
+			for (let i = 0; i < nRanked; i++) {
+				const playerId = r32(view, off, `rankings[${i}].playerId`);
+				off += 4;
+				const shipCount = r32(view, off, `rankings[${i}].shipCount`);
+				off += 4;
+				const resources = r64(view, off, `rankings[${i}].resources`);
+				off += 8;
+				const rank = r8(view, off++, `rankings[${i}].rank`);
+				rankings.push({ playerId, shipCount, resources, rank });
+			}
+			console.log(
+				`[parser] rankings: ${rankings.map((r) => `#${r.rank} player ${r.playerId}`).join(', ')}`
+			);
+		} catch (e) {
+			console.warn('[parser] failed to read rankings footer:', e);
+			rankings = undefined;
+		}
+	}
+
 	const playerIndex = new Map(players.map((p, i) => [p.id, i]));
-	return { width, height, players, planets, turns, playerIndex };
+	return { width, height, players, planets, turns, playerIndex, rankings };
 }
