@@ -4,6 +4,7 @@
 	import type { Replay } from '$lib/parser';
 	import ReplayViewer from '$lib/components/ReplayViewer.svelte';
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
+	import { resolve } from '$app/paths';
 
 	let replay = $state<Replay | null>(null);
 	let error = $state<string | null>(null);
@@ -43,7 +44,7 @@
 		<span>
 			This is a bundled demo: two copies of the Python starter bot fighting over five planets. Write
 			your own with the
-			<a href="/editor" class="text-teal-400 hover:underline">bot editor</a> and the
+			<a href={resolve('/editor')} class="text-teal-400 hover:underline">bot editor</a> and the
 			<a
 				href="https://github.com/margual56/halite2"
 				class="text-teal-400 hover:underline"

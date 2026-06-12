@@ -3,11 +3,13 @@
 	import { PLAYER_COLORS } from '$lib/renderer';
 	import type { Replay } from '$lib/parser';
 	import ReplayViewer from '$lib/components/ReplayViewer.svelte';
+	import SiteHeader from '$lib/components/SiteHeader.svelte';
 
 	let replay = $state<Replay | null>(null);
 	let error = $state<string | null>(null);
 	let loading = $state(false);
 	let dragging = $state(false);
+	let fileInput: HTMLInputElement | undefined = $state();
 
 	// ── File loading ──────────────────────────────────────────────────────────
 
@@ -97,45 +99,27 @@
 	aria-label="Halite II replay viewer"
 >
 	<!-- Header -->
-	<header class="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-2">
-		<a href="/" class="font-mono text-sm font-semibold tracking-wide text-teal-400">Halite II</a>
-		<span class="text-white/30">|</span>
-
-		<label
-			class="cursor-pointer rounded bg-white/10 px-3 py-1 text-xs font-medium hover:bg-white/20"
-		>
-			Open .hlt
-			<input type="file" accept=".hlt" class="hidden" onchange={onFileInput} />
-		</label>
-
+	<SiteHeader active="/">
 		{#if replay}
 			<span class="text-xs text-white/40">
 				{replay.width}×{replay.height} · {replay.turns.length} turns
 			</span>
+			<div class="flex items-center gap-3">
+				{#each replay.players as player, i (i)}
+					<div class="flex items-center gap-1.5 text-xs">
+						<span
+							class="inline-block h-2.5 w-2.5 rounded-full"
+							style="background:{PLAYER_COLORS[i % PLAYER_COLORS.length]}"
+						></span>
+						<span class="text-white/70">{player.name || `Bot ${i}`}</span>
+					</div>
+				{/each}
+			</div>
 		{/if}
+	</SiteHeader>
 
-		<div class="ml-auto flex items-center gap-4">
-			{#if replay}
-				<div class="flex items-center gap-3">
-					{#each replay.players as player, i (i)}
-						<div class="flex items-center gap-1.5 text-xs">
-							<span
-								class="inline-block h-2.5 w-2.5 rounded-full"
-								style="background:{PLAYER_COLORS[i % PLAYER_COLORS.length]}"
-							></span>
-							<span class="text-white/70">{player.name || `Bot ${i}`}</span>
-						</div>
-					{/each}
-				</div>
-			{/if}
-
-			<nav class="flex items-center gap-4 text-xs">
-				<a href="/demo" class="text-white/50 transition-colors hover:text-teal-400">Demo match</a>
-				<a href="/editor" class="text-white/50 transition-colors hover:text-teal-400">Bot editor</a>
-				<a href="/rules" class="text-white/50 transition-colors hover:text-teal-400">Game rules</a>
-			</nav>
-		</div>
-	</header>
+	<!-- Hidden file input, triggered by the clickable drop zone -->
+	<input bind:this={fileInput} type="file" accept=".hlt" class="hidden" onchange={onFileInput} />
 
 	<!-- Main area -->
 	<main class="relative min-h-0 flex-1">
@@ -157,9 +141,11 @@
 						</p>
 					</div>
 
-					<!-- Drop zone -->
-					<div
-						class="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed px-16 py-12 text-center transition-colors {dragging
+					<!-- Drop zone (clickable: opens a file picker) -->
+					<button
+						type="button"
+						onclick={() => fileInput?.click()}
+						class="flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-16 py-12 text-center transition-colors hover:border-teal-400/60 hover:bg-white/[0.02] focus-visible:border-teal-400 focus-visible:outline-none {dragging
 							? 'border-teal-400'
 							: 'border-white/20'}"
 					>
@@ -178,14 +164,15 @@
 								d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
 							/>
 						</svg>
-						<p class="text-sm font-medium text-white/60">
+						<span class="text-sm font-medium text-white/60">
 							Drop a <code class="text-teal-400">.hlt</code> replay file here
-						</p>
-						<p class="text-xs text-white/30">
-							or use the Open button above — or watch the
-							<a href="/demo" class="text-teal-400 hover:underline">demo match</a>
-						</p>
-					</div>
+						</span>
+						<span class="text-xs text-white/30">or click to browse</span>
+					</button>
+					<p class="-mt-6 text-xs text-white/30">
+						No replay handy? Watch the
+						<a href="/demo" class="text-teal-400 hover:underline">demo match</a>
+					</p>
 
 					{#if error}
 						<p class="text-sm text-red-400">{error}</p>

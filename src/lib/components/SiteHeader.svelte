@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import type { Snippet } from 'svelte';
 
-	let { active = '' }: { active?: string } = $props();
+	let { active = '', children }: { active?: string; children?: Snippet } = $props();
 
 	const links = [
 		{ href: '/', label: 'Visualizer' },
 		{ href: '/demo', label: 'Demo match' },
 		{ href: '/editor', label: 'Bot editor' },
 		{ href: '/rules', label: 'Game rules' }
-	];
+	] as const;
 </script>
 
 <header class="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-2">
@@ -28,4 +29,10 @@
 			</a>
 		{/each}
 	</nav>
+
+	{#if children}
+		<div class="ml-auto flex items-center gap-4">
+			{@render children()}
+		</div>
+	{/if}
 </header>

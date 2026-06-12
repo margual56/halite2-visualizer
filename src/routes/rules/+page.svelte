@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
 
 	const pageTitle = 'Game Rules — Halite II Replay Visualizer';
@@ -165,9 +166,9 @@
 
 			<footer class="border-t border-white/10 pt-6 text-sm text-white/60">
 				Ready? Start from the
-				<a href="/editor" class="text-teal-400 hover:underline">bot editor</a>, watch the
-				<a href="/demo" class="text-teal-400 hover:underline">demo match</a>, or grab the engine
-				from
+				<a href={resolve('/editor')} class="text-teal-400 hover:underline">bot editor</a>, watch the
+				<a href={resolve('/demo')} class="text-teal-400 hover:underline">demo match</a>, or grab the
+				engine from
 				<a
 					href="https://github.com/margual56/halite2/releases"
 					class="text-teal-400 hover:underline"

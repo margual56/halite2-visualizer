@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
 	import type * as Monaco from 'monaco-editor';
+	import { resolve } from '$app/paths';
 
 	const STORAGE_KEY = 'halite2-bot-code';
 
@@ -168,8 +169,8 @@ while True:
 				</li>
 				<li>
 					Drop the resulting <code class="text-teal-300">replay.hlt</code> on the
-					<a href="/" class="text-teal-400 hover:underline">visualizer</a> — or check the
-					<a href="/rules" class="text-teal-400 hover:underline">game rules</a> first.
+					<a href={resolve('/')} class="text-teal-400 hover:underline">visualizer</a> — or check the
+					<a href={resolve('/rules')} class="text-teal-400 hover:underline">game rules</a> first.
 				</li>
 			</ol>
 
