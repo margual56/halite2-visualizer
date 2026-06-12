@@ -5,4 +5,19 @@
 		<changefreq>monthly</changefreq>
 		<priority>1.0</priority>
 	</url>
+	<url>
+		<loc>https://halite2.pages.dev/demo</loc>
+		<changefreq>monthly</changefreq>
+		<priority>0.8</priority>
+	</url>
+	<url>
+		<loc>https://halite2.pages.dev/editor</loc>
+		<changefreq>monthly</changefreq>
+		<priority>0.8</priority>
+	</url>
+	<url>
+		<loc>https://halite2.pages.dev/rules</loc>
+		<changefreq>monthly</changefreq>
+		<priority>0.8</priority>
+	</url>
 </urlset>
