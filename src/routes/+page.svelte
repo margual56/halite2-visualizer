@@ -136,6 +136,24 @@
 	<!-- Hidden file input, triggered by the clickable drop zone -->
 	<input bind:this={fileInput} type="file" accept=".hlt" class="hidden" onchange={onFileInput} />
 
+	<!-- Mobile player strip (below header, above viewer) -->
+	{#if replay}
+		<div class="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-1.5 sm:hidden">
+			<span class="text-xs text-white/40">{replay.width}×{replay.height} · {replay.turns.length}t</span>
+			<div class="flex items-center gap-3">
+				{#each replay.players as player, i (i)}
+					<div class="flex items-center gap-1.5 text-xs">
+						<span
+							class="inline-block h-2 w-2 shrink-0 rounded-full"
+							style="background:{PLAYER_COLORS[i % PLAYER_COLORS.length]}"
+						></span>
+						<span class="text-white/70">{player.name || `Bot ${i}`}</span>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
 	<!-- Main area -->
 	<main class="relative min-h-0 flex-1">
 		{#if !replay && !loading}
@@ -308,4 +326,17 @@
 			</div>
 		{/if}
 	</main>
+
+	<!-- Mobile: "Open another replay" pinned at the bottom -->
+	{#if replay}
+		<div class="shrink-0 border-t border-white/10 p-3 sm:hidden">
+			<button
+				onclick={() => fileInput?.click()}
+				class="flex w-full items-center justify-center gap-2 rounded-md bg-teal-600 py-2.5 text-sm font-semibold text-white hover:bg-teal-500 active:bg-teal-700"
+			>
+				<IconUpload class="h-4 w-4" />
+				Open another replay
+			</button>
+		</div>
+	{/if}
 </div>

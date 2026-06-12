@@ -5,42 +5,54 @@
 	let { active = '', children, center }: { active?: string; children?: Snippet; center?: Snippet } = $props();
 
 	const links = [
-		{ href: '/', label: 'Visualizer' },
-		{ href: '/demo', label: 'Demo match' },
-		{ href: '/editor', label: 'Bot editor' },
-		{ href: '/rules', label: 'Game rules' }
+		{ href: '/', label: 'Visualizer', short: 'Home' },
+		{ href: '/demo', label: 'Demo match', short: 'Demo' },
+		{ href: '/editor', label: 'Bot editor', short: 'Editor' },
+		{ href: '/rules', label: 'Game rules', short: 'Rules' },
 	] as const;
 </script>
 
-<header class="relative flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-2">
-	<a href={resolve('/')} class="font-mono text-sm font-semibold tracking-wide text-teal-400"
-		>Halite II</a
-	>
-	<span class="text-white/30">|</span>
-	<nav class="flex items-center gap-4 text-xs">
-		{#each links as link (link.href)}
-			<a
-				href={resolve(link.href)}
-				class="{active === link.href
-					? 'font-semibold text-white'
-					: 'text-white/50'} transition-colors hover:text-teal-400"
-			>
-				{link.label}
-			</a>
-		{/each}
-	</nav>
+<!--
+  Mobile:  flex — logo left, nav right (ml-auto, short labels).
+  Desktop: 3-col grid — [logo + nav] | [center slot] | [children].
+-->
+<header class="flex shrink-0 items-center border-b border-white/10 px-4 py-2 sm:grid sm:grid-cols-[auto_1fr_auto]">
 
-	{#if center}
-		<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-			<div class="pointer-events-auto">
-				{@render center()}
+	<!-- Left: logo + desktop nav -->
+	<div class="flex items-center gap-4">
+		<a href={resolve('/')} class="shrink-0 whitespace-nowrap font-mono text-sm font-semibold tracking-wide text-teal-400"
+			>Halite II</a
+		>
+		<nav class="hidden items-center gap-4 text-xs sm:flex">
+			{#each links as link (link.href)}
+				<a
+					href={resolve(link.href)}
+					class="{active === link.href ? 'font-semibold text-white' : 'text-white/50'} transition-colors hover:text-teal-400"
+				>{link.label}</a>
+			{/each}
+		</nav>
+	</div>
+
+	<!-- Center: desktop only -->
+	<div class="hidden justify-center px-3 sm:flex">
+		{#if center}{@render center()}{/if}
+	</div>
+
+	<!-- Right: mobile nav + desktop children -->
+	<div class="ml-auto flex items-center gap-4 sm:ml-0">
+		{#if children}
+			<div class="hidden items-center gap-4 sm:flex">
+				{@render children()}
 			</div>
-		</div>
-	{/if}
+		{/if}
+		<nav class="flex items-center gap-2 text-xs sm:hidden">
+			{#each links as link (link.href)}
+				<a
+					href={resolve(link.href)}
+					class="{active === link.href ? 'font-semibold text-white' : 'text-white/50'} transition-colors hover:text-teal-400"
+				>{link.short}</a>
+			{/each}
+		</nav>
+	</div>
 
-	{#if children}
-		<div class="ml-auto flex items-center gap-4">
-			{@render children()}
-		</div>
-	{/if}
 </header>
