@@ -5,7 +5,7 @@ import { updateDockSlots } from './render/docking';
 import { drawAttackBeams, drawExplosions } from './render/effects';
 import { drawHud } from './render/hud';
 import { drawDockingHint, drawPlanet, planetVisualSize } from './render/planets';
-import { drawShipTrail, drawShipTriangle } from './render/ships';
+import { drawDockBeam, drawShip, drawShipTrail, shipSizePx } from './render/ships';
 import { makeTransform, wx, wy } from './render/transform';
 
 export { PLAYER_COLORS } from './render/colors';
@@ -69,6 +69,7 @@ export function render(
 	drawExplosions(ctx, replay, currTurn.turn, alpha, t);
 
 	// --- Ships ---
+	const sizePx = shipSizePx(t.scale);
 	// Interpolated screen position per ship id, for the attack-beam pass below
 	const shipScreenPos = new Map<number, { x: number; y: number }>();
 	for (const ship of currTurn.ships) {
@@ -77,18 +78,22 @@ export function render(
 		let sy = prev ? prev.y + (ship.y - prev.y) * alpha : ship.y;
 
 		let angle = 0;
-		const isDocked = ship.state === 2;
 		const isDockingOrDocked = ship.state >= 1 && ship.state <= 3;
+		let dockPlanet = null;
 
 		if (isDockingOrDocked) {
 			const planet = planetById.get(ship.planetId);
 			const dockAngle = dockAngles.get(ship.id);
 			if (planet && dockAngle !== undefined) {
-				// Sit on the planet's (halite-shrunk) rim at the assigned slot angle
-				const orbit = planetVisualSize(planet.size, haliteFracByPlanet.get(planet.id) ?? 1);
+				// Sit just off the planet's (halite-shrunk) rim at the assigned slot
+				// angle, nose pointing away from the planet, tethered by a beam.
+				const orbit =
+					planetVisualSize(planet.size, haliteFracByPlanet.get(planet.id) ?? 1) +
+					(sizePx * 0.5) / t.scale;
 				sx = planet.x + Math.cos(dockAngle) * orbit;
 				sy = planet.y + Math.sin(dockAngle) * orbit;
 				angle = dockAngle;
+				dockPlanet = planet;
 			}
 			// If no angle yet (e.g. very first docking frame), leave sx/sy at
 			// interpolated position — it'll snap into place next frame.
@@ -106,10 +111,24 @@ export function render(
 
 		// Engine trail: fading exhaust from last turn's position to here
 		if (!isDockingOrDocked && prev) {
-			drawShipTrail(ctx, wx(prev.x, t), wy(prev.y, t), screenX, screenY, color);
+			drawShipTrail(ctx, wx(prev.x, t), wy(prev.y, t), screenX, screenY, color, sizePx);
 		}
 
-		drawShipTriangle(ctx, screenX, screenY, angle, color, ship.health / 255, isDocked);
+		// Tractor beam tethering the ship to its planet (under the sprite)
+		if (dockPlanet) {
+			drawDockBeam(
+				ctx,
+				screenX,
+				screenY,
+				wx(dockPlanet.x, t),
+				wy(dockPlanet.y, t),
+				color,
+				ship.state,
+				sizePx
+			);
+		}
+
+		drawShip(ctx, screenX, screenY, angle, color, ship.health / 255, sizePx);
 	}
 
 	// --- Attack beams (over the ships) ---

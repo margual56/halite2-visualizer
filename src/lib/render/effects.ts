@@ -1,6 +1,6 @@
 import type { Replay } from '../parser';
 import { getAttacksByTurn, getDeathsByTurn } from './events';
-import { SHIP_SIZE } from './ships';
+import { shipSizePx } from './ships';
 import { wx, wy, type Transform } from './transform';
 
 const EXPLOSION_TURNS = 3; // how many turns an explosion lingers
@@ -25,7 +25,7 @@ export function drawExplosions(
 		const progress = (now - deathTurn) / EXPLOSION_TURNS;
 		if (progress < 0 || progress >= 1) continue;
 
-		const maxR = SHIP_SIZE * 3.5; // screen px
+		const maxR = shipSizePx(t.scale) * 1.75; // screen px
 		const r = maxR * progress;
 		const opacity = (1 - progress) * 0.85;
 

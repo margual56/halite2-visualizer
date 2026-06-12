@@ -1,6 +1,7 @@
 import type { Replay } from '../parser';
 
-export const PLAYER_COLORS = ['#EF4444', '#3B82F6', '#22C55E', '#EAB308'];
+// Player palette from the original Halite II visualizer
+export const PLAYER_COLORS = ['#BD00DB', '#63CECA', '#FFBE00', '#C5EC98'];
 
 /** Parse a CSS hex color (#RRGGBB) into {r, g, b} components. */
 export function hexToRgb(hex: string): { r: number; g: number; b: number } {
