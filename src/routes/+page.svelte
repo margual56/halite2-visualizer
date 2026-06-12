@@ -77,12 +77,14 @@
 	<meta property="og:url" content={siteUrl} />
 	<meta property="og:title" content={pageTitle} />
 	<meta property="og:description" content={pageDescription} />
-	<meta property="og:image" content="{siteUrl}/planet.png" />
+	<meta property="og:image" content="{siteUrl}/og-preview.png" />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
 
-	<meta name="twitter:card" content="summary" />
+	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content={pageTitle} />
 	<meta name="twitter:description" content={pageDescription} />
-	<meta name="twitter:image" content="{siteUrl}/planet.png" />
+	<meta name="twitter:image" content="{siteUrl}/og-preview.png" />
 
 	{@html `<script type="application/ld+json">${jsonLd}</script>`}
 </svelte:head>
