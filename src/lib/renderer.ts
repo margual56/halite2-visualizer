@@ -3,7 +3,7 @@ import type { Replay, TurnRecord } from './parser';
 export const PLAYER_COLORS = ['#EF4444', '#3B82F6', '#22C55E', '#EAB308'];
 const BG = '#080C18';
 const GRID_COLOR = 'rgba(255,255,255,0.04)';
-const SHIP_SIZE = 18; // triangle "radius" in screen pixels
+const SHIP_SIZE = 14; // triangle "radius" in screen pixels
 
 // Cached planet texture image
 let planetTextureCache: HTMLImageElement | null = null;
@@ -21,15 +21,38 @@ const shipDockSlot = new Map<number, { planetId: number; slot: number }>();
 // Occupied slots: key = "planetId:slotIndex" → shipId
 const planetSlotOccupancy = new Map<string, number>();
 
-// Active explosions: { x, y, color, age } where age goes 0→1 over EXPLOSION_TURNS turns
-interface Explosion {
+// Explosions are derived deterministically from the replay: a ship present in
+// turn N-1 but absent in turn N explodes at turn N. Computed once per replay
+// and looked up by turn number at render time, so scrubbing/stepping works.
+interface DeathEvent {
 	x: number;
 	y: number;
 	color: string;
-	age: number;
 }
-const explosions: Explosion[] = [];
+const deathCache = new WeakMap<Replay, Map<number, DeathEvent[]>>();
 const EXPLOSION_TURNS = 3; // how many turns the explosion lingers
+
+function getDeathsByTurn(replay: Replay): Map<number, DeathEvent[]> {
+	let byTurn = deathCache.get(replay);
+	if (byTurn) return byTurn;
+	byTurn = new Map();
+	for (let i = 1; i < replay.turns.length; i++) {
+		const curr = replay.turns[i];
+		const currIds = new Set(curr.ships.map((s) => s.id));
+		for (const ship of replay.turns[i - 1].ships) {
+			if (currIds.has(ship.id)) continue;
+			const playerIdx = replay.playerIndex.get(ship.ownerId) ?? 0;
+			let list = byTurn.get(curr.turn);
+			if (!list) {
+				list = [];
+				byTurn.set(curr.turn, list);
+			}
+			list.push({ x: ship.x, y: ship.y, color: PLAYER_COLORS[playerIdx % PLAYER_COLORS.length] });
+		}
+	}
+	deathCache.set(replay, byTurn);
+	return byTurn;
+}
 
 function getPlanetTexture(): HTMLImageElement {
 	if (!planetTextureCache) {
@@ -323,7 +346,6 @@ export function render(
 		shipApproachAngle.clear();
 		shipDockSlot.clear();
 		planetSlotOccupancy.clear();
-		explosions.length = 0;
 	}
 
 	// --- Track free-flight approach angles ---
@@ -420,54 +442,44 @@ export function render(
 	}
 
 	// --- Explosions ---
-	// Detect ships that existed last turn but are gone this turn (killed)
-	const currShipIds = new Set(currTurn.ships.map((s) => s.id));
-	for (const prev of prevTurn.ships) {
-		if (!currShipIds.has(prev.id)) {
-			// Ship died — spawn explosion at its last known position
-			const playerIdx = replay.playerIndex.get(prev.ownerId) ?? 0;
-			const color = PLAYER_COLORS[playerIdx % PLAYER_COLORS.length];
-			explosions.push({ x: prev.x, y: prev.y, color, age: 0 });
-		}
-	}
+	// Draw any death that happened within the last EXPLOSION_TURNS turns,
+	// with progress derived from the current fractional turn time.
+	const deathsByTurn = getDeathsByTurn(replay);
+	const now = currTurn.turn + alpha;
+	for (let back = 0; back < EXPLOSION_TURNS; back++) {
+		const deathTurn = currTurn.turn - back;
+		const deaths = deathsByTurn.get(deathTurn);
+		if (!deaths) continue;
+		const progress = (now - deathTurn) / EXPLOSION_TURNS;
+		if (progress < 0 || progress >= 1) continue;
 
-	// Draw and age existing explosions
-	for (let i = explosions.length - 1; i >= 0; i--) {
-		const ex = explosions[i];
-		// Progress within this turn: explosions created this turn start at alpha,
-		// older ones are further along
-		const progress = Math.min(1, (ex.age + alpha) / EXPLOSION_TURNS);
-		const screenX = wx(ex.x, t);
-		const screenY = wy(ex.y, t);
-
-		// Outer fading ring
-		const maxR = (SHIP_SIZE * 3.5 * t.scale) / t.scale; // in screen px
+		const maxR = SHIP_SIZE * 3.5; // screen px
 		const r = maxR * progress;
 		const opacity = (1 - progress) * 0.85;
 
-		ctx.save();
-		ctx.beginPath();
-		ctx.arc(screenX, screenY, r * t.scale, 0, Math.PI * 2);
-		ctx.strokeStyle = ex.color;
-		ctx.lineWidth = 2.5 * (1 - progress * 0.7);
-		ctx.globalAlpha = opacity;
-		ctx.stroke();
+		for (const ex of deaths) {
+			const screenX = wx(ex.x, t);
+			const screenY = wy(ex.y, t);
 
-		// Inner bright flash (only in first half)
-		if (progress < 0.5) {
-			const flashR = maxR * 0.5 * (1 - progress * 2) * t.scale;
+			ctx.save();
+			// Outer fading ring
 			ctx.beginPath();
-			ctx.arc(screenX, screenY, flashR, 0, Math.PI * 2);
-			ctx.fillStyle = ex.color;
-			ctx.globalAlpha = (0.5 - progress) * 1.5;
-			ctx.fill();
-		}
-		ctx.restore();
+			ctx.arc(screenX, screenY, r, 0, Math.PI * 2);
+			ctx.strokeStyle = ex.color;
+			ctx.lineWidth = 2.5 * (1 - progress * 0.7);
+			ctx.globalAlpha = opacity;
+			ctx.stroke();
 
-		// Age by one turn when alpha wraps (i.e. on the canonical frame, not interpolated)
-		if (alpha >= 1) {
-			ex.age += 1;
-			if (ex.age >= EXPLOSION_TURNS) explosions.splice(i, 1);
+			// Inner bright flash (only in first half)
+			if (progress < 0.5) {
+				const flashR = maxR * 0.5 * (1 - progress * 2);
+				ctx.beginPath();
+				ctx.arc(screenX, screenY, flashR, 0, Math.PI * 2);
+				ctx.fillStyle = ex.color;
+				ctx.globalAlpha = (0.5 - progress) * 1.5;
+				ctx.fill();
+			}
+			ctx.restore();
 		}
 	}
 
