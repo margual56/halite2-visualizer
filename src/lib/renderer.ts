@@ -1,7 +1,6 @@
 import type { Replay, TurnRecord } from './parser';
 import { drawBackground, drawGrid } from './render/background';
 import { playerColor } from './render/colors';
-import { updateDockSlots } from './render/docking';
 import { drawAttackBeams, drawExplosions } from './render/effects';
 import { drawHud } from './render/hud';
 import { drawDockingHint, drawPlanet, planetVisualSize } from './render/planets';
@@ -59,11 +58,10 @@ export function render(
 		drawDockingHint(ctx, px, py, radius, t);
 	}
 
-	// --- Dock slots ---
+	// --- Prev positions (for interpolation and trail) ---
 	const prevPositions = new Map(
 		prevTurn.ships.map((s) => [s.id, { x: s.x, y: s.y, state: s.state }])
 	);
-	const dockAngles = updateDockSlots(currTurn, prevPositions, planetById);
 
 	// --- Explosions (under the ships) ---
 	drawExplosions(ctx, replay, currTurn.turn, alpha, t);
@@ -83,20 +81,17 @@ export function render(
 
 		if (isDockingOrDocked) {
 			const planet = planetById.get(ship.planetId);
-			const dockAngle = dockAngles.get(ship.id);
-			if (planet && dockAngle !== undefined) {
-				// Sit just off the planet's (halite-shrunk) rim at the assigned slot
-				// angle, nose pointing away from the planet, tethered by a beam.
+			if (planet) {
+				// Use the real approach angle from the replay position, then snap
+				// to the visual orbit rim so the ship always sits cleanly on the ring.
 				const orbit =
 					planetVisualSize(planet.size, haliteFracByPlanet.get(planet.id) ?? 1) +
 					(sizePx * 0.5) / t.scale;
-				sx = planet.x + Math.cos(dockAngle) * orbit;
-				sy = planet.y + Math.sin(dockAngle) * orbit;
-				angle = dockAngle;
+				angle = Math.atan2(sy - planet.y, sx - planet.x);
+				sx = planet.x + Math.cos(angle) * orbit;
+				sy = planet.y + Math.sin(angle) * orbit;
 				dockPlanet = planet;
 			}
-			// If no angle yet (e.g. very first docking frame), leave sx/sy at
-			// interpolated position — it'll snap into place next frame.
 		} else if (prev) {
 			const dx = ship.x - prev.x;
 			const dy = ship.y - prev.y;
