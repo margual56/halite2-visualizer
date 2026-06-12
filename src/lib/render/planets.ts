@@ -1,7 +1,6 @@
 import { hexToRgb } from './colors';
 import type { Transform } from './transform';
 
-// Cached planet texture images — each planet picks one by id hash
 const PLANET_TEXTURE_SRCS = ['/planet.png', '/planet2.png', '/planet3.png'];
 let planetTextureCache: HTMLImageElement[] | null = null;
 
@@ -16,16 +15,17 @@ function getPlanetTextures(): HTMLImageElement[] {
 	return planetTextureCache;
 }
 
-/**
- * Deterministic per-planet hash (u32) — drives texture choice and rotation
- * so each planet always looks the same.
- */
-function planetHash(planetId: number): number {
-	// xorshift-style hash
-	let h = planetId ^ 0xdeadbeef;
-	h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
-	h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
-	return (h ^ (h >>> 16)) >>> 0;
+// Random texture + rotation assigned once per planet id, stable within a session.
+const planetProps = new Map<number, { textureIdx: number; rotation: number }>();
+
+function getPlanetProps(planetId: number, textureCount: number) {
+	if (!planetProps.has(planetId)) {
+		planetProps.set(planetId, {
+			textureIdx: Math.floor(Math.random() * textureCount),
+			rotation: Math.random() * Math.PI * 2,
+		});
+	}
+	return planetProps.get(planetId)!;
 }
 
 /**
@@ -54,8 +54,8 @@ export function drawPlanet(
 	haliteFraction: number
 ) {
 	const textures = getPlanetTextures();
-	const h = planetHash(planetId);
-	const texture = textures[(h >>> 3) % textures.length];
+	const props = getPlanetProps(planetId, textures.length);
+	const texture = textures[props.textureIdx];
 
 	ctx.save();
 
@@ -85,7 +85,7 @@ export function drawPlanet(
 
 	// --- Texture detail (screen blend lights up crater rims and sheen) ---
 	if (texture.complete && texture.naturalWidth > 0) {
-		const angle = (h / 0xffffffff) * Math.PI * 2;
+		const angle = props.rotation;
 		// Scale texture so it fills the diameter (2*radius), with a tiny 5% overshoot
 		// so rotation never reveals a gap at the edges.
 		const texSize = radius * 2 * 1.05;

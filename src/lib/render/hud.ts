@@ -29,8 +29,18 @@ export function drawHud(ctx: CanvasRenderingContext2D, replay: Replay, currTurn:
 	const fontSize = Math.round(11 * hudScale);
 	ctx.font = `bold ${fontSize}px monospace`;
 
-	for (let i = 0; i < replay.players.length; i++) {
-		const player = replay.players[i];
+	const sortedPlayers = replay.players
+		.map((player, i) => ({ player, i }))
+		.sort((a, b) => {
+			if (isGameOver && replay.rankings) {
+				const ra = replay.rankings.find((r) => r.playerId === a.player.id)?.rank ?? 999;
+				const rb = replay.rankings.find((r) => r.playerId === b.player.id)?.rank ?? 999;
+				return ra - rb;
+			}
+			return (liveShipCount.get(b.player.id) ?? 0) - (liveShipCount.get(a.player.id) ?? 0);
+		});
+
+	for (const { player, i } of sortedPlayers) {
 		const color = PLAYER_COLORS[i % PLAYER_COLORS.length];
 		const ships = liveShipCount.get(player.id) ?? 0;
 

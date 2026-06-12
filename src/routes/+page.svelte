@@ -4,6 +4,8 @@
 	import type { Replay } from '$lib/parser';
 	import ReplayViewer from '$lib/components/ReplayViewer.svelte';
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
+	import IconUpload from '$lib/icons/IconUpload.svelte';
+	import IconFile from '$lib/icons/IconFile.svelte';
 
 	let replay = $state<Replay | null>(null);
 	let error = $state<string | null>(null);
@@ -102,6 +104,17 @@
 >
 	<!-- Header -->
 	<SiteHeader active="/">
+		{#snippet center()}
+			{#if replay}
+				<button
+					onclick={() => fileInput?.click()}
+					class="flex items-center gap-2 rounded-md bg-teal-600 px-4 py-1.5 text-sm font-semibold text-white shadow hover:bg-teal-500 active:bg-teal-700"
+				>
+					<IconUpload class="h-4 w-4" />
+					Open another replay
+				</button>
+			{/if}
+		{/snippet}
 		{#if replay}
 			<span class="text-xs text-white/40">
 				{replay.width}×{replay.height} · {replay.turns.length} turns
@@ -151,21 +164,7 @@
 							? 'border-teal-400'
 							: 'border-white/20'}"
 					>
-						<svg
-							class="mb-2 h-12 w-12 transition-colors {dragging
-								? 'text-teal-400'
-								: 'text-white/20'}"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="1.5"
-								d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-							/>
-						</svg>
+						<IconFile class="mb-2 h-12 w-12 transition-colors {dragging ? 'text-teal-400' : 'text-white/20'}" />
 						<span class="text-sm font-medium text-white/60">
 							Drop a <code class="text-teal-400">.hlt</code> replay file here
 						</span>

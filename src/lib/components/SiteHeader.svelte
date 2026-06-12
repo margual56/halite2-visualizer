@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import type { Snippet } from 'svelte';
 
-	let { active = '', children }: { active?: string; children?: Snippet } = $props();
+	let { active = '', children, center }: { active?: string; children?: Snippet; center?: Snippet } = $props();
 
 	const links = [
 		{ href: '/', label: 'Visualizer' },
@@ -12,7 +12,7 @@
 	] as const;
 </script>
 
-<header class="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-2">
+<header class="relative flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-2">
 	<a href={resolve('/')} class="font-mono text-sm font-semibold tracking-wide text-teal-400"
 		>Halite II</a
 	>
@@ -29,6 +29,14 @@
 			</a>
 		{/each}
 	</nav>
+
+	{#if center}
+		<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+			<div class="pointer-events-auto">
+				{@render center()}
+			</div>
+		</div>
+	{/if}
 
 	{#if children}
 		<div class="ml-auto flex items-center gap-4">

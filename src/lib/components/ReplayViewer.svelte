@@ -66,7 +66,14 @@
 			if (lastTs === -1) lastTs = ts;
 			const dt = (ts - lastTs) / 1000;
 			lastTs = ts;
-			frameF = (frameF + dt * BASE_FPS * speed) % totalFrames;
+			frameF = frameF + dt * BASE_FPS * speed;
+			if (frameF >= totalFrames) {
+				frameF = totalFrames - 1;
+				frame = Math.floor(frameF);
+				drawFrame();
+				isPlaying = false;
+				return;
+			}
 			frame = Math.floor(frameF);
 			drawFrame();
 			rafId = requestAnimationFrame(loop);
